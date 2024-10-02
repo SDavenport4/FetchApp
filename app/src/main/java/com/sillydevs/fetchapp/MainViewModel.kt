@@ -49,8 +49,17 @@ class MainViewModel @Inject constructor(
 
                 val filteredItems = response.filter { !it.name.isNullOrBlank() }
 
+                /** This could be used for TRUE sorting by name **/
+                //val sortedItems = filteredItems.sortedWith(
+                //    compareBy<Item> { it.listId }.thenBy { it.name }
+                //)
+
+                /** This will sort items by name, respecting the number in their name, and placing at the end if no number provided.**/
                 val sortedItems = filteredItems.sortedWith(
-                    compareBy<Item> { it.listId }.thenBy { it.name }
+                    compareBy<Item> { it.listId }.thenBy {
+                        val numberPart = it.name?.substringAfter("Item ")?.toIntOrNull() ?: Int.MAX_VALUE
+                        numberPart
+                    }
                 )
 
                 val groupedItems = sortedItems.groupBy { it.listId }
