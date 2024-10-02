@@ -6,6 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +17,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -51,14 +55,26 @@ fun ItemListScreen(
     modifier: Modifier,
     viewModel: MainViewModel = hiltViewModel()
 ) {
-    val itemsGrouped by viewModel.items.collectAsState()
-    val expandedStates by viewModel.expandedStates.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+
+    if (uiState.loadingState == LoadingState.Error) {
+        ErrorMessage(
+            modifier,
+            viewModel::fetchItems
+        )
+        return
+    }
+
+    if (uiState.loadingState == LoadingState.Loading) {
+        LoadingSpinner(modifier)
+        return
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize()
     ) {
-        itemsGrouped.forEach { (listId, items) ->
-            val isExpanded = expandedStates[listId] ?: true
+        uiState.items.forEach { (listId, items) ->
+            val isExpanded = uiState.expandedStates[listId] ?: true
 
             item(key = "Group$listId") {
                 Row(
@@ -96,6 +112,35 @@ fun ItemListScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun LoadingSpinner(modifier: Modifier = Modifier) {
+    Column(
+        modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+
+@Composable
+fun ErrorMessage(
+    modifier: Modifier = Modifier,
+    onClickRetry: (() -> Unit)
+) {
+    Column(
+        modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("ERROR")
+        Button( { onClickRetry() }) {
+            Text("Retry")
         }
     }
 }

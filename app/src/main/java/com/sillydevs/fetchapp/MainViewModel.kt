@@ -12,39 +12,46 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class LoadingState {
+    Idle,
+    Loading,
+    Success,
+    Error
+}
+
+data class UiState(
+    val loadingState: LoadingState = LoadingState.Idle,
+    val items: Map<Int, List<Item>> = emptyMap(),
+    val expandedStates: Map<Int, Boolean> = emptyMap()
+)
+
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val fetchApi: FetchApi
 ) : ViewModel() {
 
-    // Holds all items
-    private val _items = MutableStateFlow<Map<Int, List<Item>>>(emptyMap())
-    val items = _items.onStart {
+    private val _uiState = MutableStateFlow(UiState())
+    val uiState = _uiState.onStart {
         fetchItems()
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000L),
-        emptyMap()
-    )
-
-    // Holds expanded state for each listId
-    private val _expandedStates = MutableStateFlow<Map<Int, Boolean>>(emptyMap())
-    val expandedStates = _expandedStates.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000L),
-        emptyMap()
+        UiState()
     )
 
     fun toggleGroupExpansion(listId: Int) {
-        _expandedStates.update { currentStates ->
-            currentStates + (listId to !(currentStates[listId] ?: true))
+        _uiState.update { currentState ->
+            currentState.copy(
+                expandedStates = currentState.expandedStates + (listId to !(currentState.expandedStates[listId] ?: true))
+            )
         }
     }
 
-    // Only called when the #collectAsState is called for the items
-    private fun fetchItems() {
+
+    fun fetchItems() {
         viewModelScope.launch {
             try {
+                updateLoadingState(LoadingState.Loading)
                 val response = fetchApi.getItems()
 
                 val filteredItems = response.filter { !it.name.isNullOrBlank() }
@@ -64,10 +71,25 @@ class MainViewModel @Inject constructor(
 
                 val groupedItems = sortedItems.groupBy { it.listId }
 
-                _items.value = groupedItems
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        items = groupedItems,
+                        loadingState = LoadingState.Success
+                    )
+                }
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Error fetching items", e)
+                updateLoadingState(LoadingState.Error)
             }
+        }
+    }
+
+
+    private fun updateLoadingState(loadingState: LoadingState) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                loadingState = loadingState
+            )
         }
     }
 }
