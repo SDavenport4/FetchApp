@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -35,10 +36,9 @@ class MainViewModel @Inject constructor(
     )
 
     fun toggleGroupExpansion(listId: Int) {
-        val currentStates = _expandedStates.value.toMutableMap()
-        val currentState = currentStates[listId] ?: true
-        currentStates[listId] = !currentState
-        _expandedStates.value = currentStates
+        _expandedStates.update { currentStates ->
+            currentStates + (listId to !(currentStates[listId] ?: true))
+        }
     }
 
     // Only called when the #collectAsState is called for the items
